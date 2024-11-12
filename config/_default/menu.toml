@@ -22,3 +22,12 @@ url = "https://twitter.com"
 
 [social.params]
 icon = "brand-twitter"
+
+[[social]]
+identifier = "z-emojis"
+name = "z-emojis"
+url = "https://www.emojisearch.app/"
+
+[social.params]
+icon = "smile"
+newtab = true

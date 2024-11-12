@@ -1,3 +1,44 @@
 /*
     You can add your own custom styles here.
 */
+
+//------------details------------------
+details {
+    margin: 10px 0;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  summary {
+    font-size: 1.2em;
+    font-weight: normal;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+  }
+  
+  summary::before {
+    content: "▶"; /* 默认箭头 */
+    margin-right: 10px;
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  details[open] summary::before {
+    transform: rotate(90deg);
+  }
+  
+  details[open] {
+    border-color: #007BFF;
+    background-color: #e7f3ff;
+  }
+  
+  details > *:not(summary) {
+    margin-top: 10px;
+    font-size: 1em;
+    color: #555;
+  }
+//-------------------------------------
