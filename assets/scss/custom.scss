@@ -4,25 +4,25 @@
 
 //------------details------------------
 details {
-    margin: 10px 0;
+    margin: 0;
     padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--shadow-l1);
+    background-color: var(--tr-even-background-color);
     transition: all 0.3s ease-in-out;
   }
   
   summary {
-    font-size: 1.2em;
+    font-size: 1em;
     font-weight: normal;
-    color: #333;
+    color: var(--card-text-color-main);
     cursor: pointer;
     display: flex;
     align-items: center;
   }
   
   summary::before {
-    content: "▶"; /* 默认箭头 */
+    content: ">"; /* 默认箭头 */
     margin-right: 10px;
     transition: transform 0.3s ease-in-out;
   }
@@ -32,13 +32,59 @@ details {
   }
   
   details[open] {
-    border-color: #007BFF;
-    background-color: #e7f3ff;
+    border-color: var(--card-text-color-main);
+    background-color: var(--card-background);
   }
   
   details > *:not(summary) {
-    margin-top: 10px;
+    margin-top: 5px;
     font-size: 1em;
-    color: #555;
+    color: var(--card-text-color-main);
   }
 //-------------------------------------
+.popup-details {
+  position: relative;
+
+  summary {
+    cursor: pointer;
+  }
+
+  .popup-content {
+    display: none; /* 默认隐藏 */
+    position: fixed;
+    top: 5%; /* 上下留出5% */
+    left: 5%; /* 左右留出5% */
+    width: 90%; /* 占据页面宽度的90% */
+    height: 90%; /* 占据页面高度的90% */
+    z-index: 1000;
+    background-color: var(--card-background); /* 浮窗背景 */
+    box-shadow: var(--shadow-l2); /* 阴影 */
+    padding: var(--card-padding);
+    border-radius: var(--card-border-radius);
+    overflow: auto; /* 如果内容过多，可以滚动 */
+    transform: scale(0); /* 初始时缩小 */
+    opacity: 0; /* 初始时透明 */
+    transition: transform 0.5s ease-in-out, opacity 5s ease-in-out; /* 动画效果 */
+  }
+
+  &[open] .popup-content {
+    display: block; /* 展开时显示 */
+    transform: scale(1); /* 展开时恢复正常大小 */
+    opacity: 1; /* 展开时完全可见 */
+  }
+
+  .popup-content .close-btn {
+    position: absolute;
+    top: 2px;
+    right: 5px;
+    background-color: var(--card-background);
+    border: none;
+    font-size: 2rem;
+    color: var(--card-text-color-main);
+    cursor: pointer;
+  }
+
+  .popup-content .close-btn:hover {
+    color: #f00; /* 鼠标悬停时显示红色 */
+  }
+}

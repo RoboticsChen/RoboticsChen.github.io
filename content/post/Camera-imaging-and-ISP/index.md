@@ -64,9 +64,7 @@ draft: false
 
 ![图8 坏点校正](image.png)
 
-<details>
-  <summary>示例代码</summary>
-
+{{< popup-details title="示例代码" >}}
 ```cpp
 /**
  * @brief Performs dead pixel correction (DPC) on RAW image data by identifying
@@ -144,8 +142,7 @@ void DPC(ImageRaw& raw, uint16_t thres, DPC_MODE mode, uint16_t clip)
 }
 
 ```
-</details> 
-
+{{< /popup-details >}}
 
 ### 暗电流校正（Black level Correction，BLC）
 
@@ -157,9 +154,7 @@ void DPC(ImageRaw& raw, uint16_t thres, DPC_MODE mode, uint16_t clip)
 
 ![图9 暗电流校正](image-1.png)
 
-<details>
-  <summary>示例代码</summary>
-
+{{< popup-details title="示例代码" >}}
 ```cpp
 /**
  * @brief Performs black level correction (BLC) on RAW image data based on the
@@ -243,7 +238,7 @@ void BLC(ImageRaw& raw, uint16_t r, uint16_t gr, uint16_t gb, uint16_t b, float 
 }
 
 ```
-</details>
+{{< /popup-details >}}
 
 ### 镜头阴影校正（Lens Shading Correction，LSC）
 
@@ -287,9 +282,7 @@ $$G(i,j)=\frac{I_{\mathrm{ideal}}(i,j)}{I_{\mathrm{observed}}(i,j)}$$
 
 
 
-<details>
-  <summary>示例代码: Luma Shading Correction</summary>
-
+{{< popup-details title="示例代码：Luma Shading Correction" >}}
   ```cpp
 /**
  * @brief Performs lens shading correction (LSC) on RAW image data to compensate
@@ -324,12 +317,9 @@ void LSC(ImageRaw& raw, uint16_t intensity, int minR, int maxR, uint16_t clip)
 }
 
   ```
+{{< /popup-details >}}
 
-</details>
-
-<details>
-  <summary>示例代码: Chroma Shading Correction</summary>
-
+{{< popup-details title="示例代码：Chroma Shading Correction" >}}
   ```cpp
 
 float __cnc(const char* is_color, float center, float avgG, float avgC1, float avgC2, float r_gain, float gr_gain, float gb_gain, float b_gain)
@@ -506,12 +496,139 @@ void CNF(ImageRaw& img, BAYER_PATTERN bayer_pattern, float threshold, float r_ga
 }
 
   ```
-
-</details>
+{{< /popup-details >}}
 
 ### 抗锯齿滤波（Anti-aliasing Filtering，AAF）
 
+如果拍摄的图像中含有大量高频成分，在降采样时就会产生锯齿（aliasing），要去除锯齿，需要对原图像进行平滑。常用的方法有高斯滤波器（Gaussian Filter）和双边滤波器（Bilateral Filter）。
+
+1. 高斯滤波器
+	$$G(x,y)=\frac1{2\pi\sigma^2}\exp\left(-\frac{x^2+y^2}{2\sigma^2}\right)$$  
+	其中:  
+	$\bullet\quad G(x,y)$是高斯核在坐标(x,y)的值;  
+	$\bullet\quad \sigma$是高斯分布的标准差,决定滤波器的平滑强度;  
+	$\bullet\quad x,y$是距离核中心的坐标。
+2. 双边滤波器
+	$$W(p,q)=\exp\left(-\frac{\|p-q\|^2}{2\sigma_s^2}\right)\cdot\exp\left(-\frac{|I(p)-I(q)|^2}{2\sigma_r^2}\right)$$  
+	其中:  
+	$\bullet\quad W(p,q)$是像素q对p的权重;  
+	$\bullet\quad\|p-q\|$是两像素在空间上的距离;  
+	$\bullet\quad|I(p)-I(q)|$是两像素灰度值的差异;  
+	$\bullet\quad\sigma_s$是空间域高斯标准差;  
+	$\bullet\quad\sigma_r$是强度域高斯标准差。  
+	滤波结果:  
+	$$I^{\prime} (p)=\frac{\sum_{q\in S}W(p,q)\cdot I(q)}{\sum_{q\in S}W(p,q)}$$  
+	其中:S是滤波窗口,$I^{\prime}(p)$是像素p的滤波值。  
+
+两者对比：  
+| 特性     | 高斯滤波器               | 双边滤波器               |
+|----------|--------------------------|--------------------------|
+| 性质     | 线性滤波                 | 非线性滤波               |
+| 边缘保留 | 不保留边缘，模糊边缘     | 保留边缘，对边缘影响较小 |
+| 计算复杂度 | 低                      | 高                       |
+| 实现难度 | 简单                     | 较复杂                   |
+| 适用场景 | 快速平滑、高频噪声较少的场景 | 高质量抗锯齿，保留纹理和边缘 |
+
+![图18 锯齿滤波前](image-8.png) ![图19 锯齿滤波后](image-11.png)
+
+{{< popup-details title="示例代码（双边滤波器" >}}
+```cpp
+/**
+ * @brief Computes the Gaussian weight for a given difference.
+ * 
+ * @param x The difference (distance in space or intensity).
+ * @param sigma The standard deviation of the Gaussian function.
+ * @return The computed Gaussian weight.
+ */
+double gaussian(double x, double sigma) {
+    return std::exp(-x * x / (2.0 * sigma * sigma));
+}
+
+/**
+ * @brief Applies a bilateral filter to an ImageRaw object.
+ * 
+ * @param src Input image.
+ * @param dst Output image (should be pre-initialized to the same size as src).
+ * @param d The diameter of the filter kernel (must be an odd number).
+ * @param sigmaColor The standard deviation in the intensity space.
+ * @param sigmaSpace The standard deviation in the spatial space.
+ */
+void applyBilateralFilter(const ImageRaw& src, ImageRaw& dst, int d, double sigmaColor, double sigmaSpace) {
+    int height = src.getHeight();
+    int width = src.getWidth();
+    
+    // Ensure kernel size is odd
+    if (d % 2 == 0) {
+        throw std::invalid_argument("Kernel size must be odd.");
+    }
+
+    // Precompute spatial Gaussian weights
+    int radius = d / 2;
+    std::vector<std::vector<double>> spatialKernel(d, std::vector<double>(d, 0.0));
+    for (int i = -radius; i <= radius; ++i) {
+        for (int j = -radius; j <= radius; ++j) {
+            spatialKernel[i + radius][j + radius] = gaussian(std::sqrt(i * i + j * j), sigmaSpace);
+        }
+    }
+
+    // Perform bilateral filtering
+    for (int i = 0; i < height; ++i) {
+        for (int j = 0; j < width; ++j) {
+            double weightedSum = 0.0;
+            double normalizationFactor = 0.0;
+
+            uint16_t centerPixel = src.at(i, j);
+
+            for (int ki = -radius; ki <= radius; ++ki) {
+                for (int kj = -radius; kj <= radius; ++kj) {
+                    int ni = i + ki;
+                    int nj = j + kj;
+
+                    // Skip out-of-bound pixels
+                    if (ni < 0 || ni >= height || nj < 0 || nj >= width) {
+                        continue;
+                    }
+
+                    uint16_t neighborPixel = src.at(ni, nj);
+
+                    // Compute intensity Gaussian weight
+                    double intensityWeight = gaussian(std::abs((int)centerPixel - (int)neighborPixel), sigmaColor);
+
+                    // Compute final weight
+                    double weight = spatialKernel[ki + radius][kj + radius] * intensityWeight;
+
+                    // Accumulate weighted sum and normalization factor
+                    weightedSum += neighborPixel * weight;
+                    normalizationFactor += weight;
+                }
+            }
+
+            // Assign the filtered value to the destination image
+            dst.at(i, j) = static_cast<uint16_t>(weightedSum / normalizationFactor);
+        }
+    }
+}
+
+```
+{{< /popup-details >}}
+
 ### 自动白平衡（Auto White Balance，AWB） 
+
+人的视觉和神经系统具有色彩恒常性，在看到白色物体的时候基本不受环境光源变化的影响。但是image sensor并不能像人的视觉系统一样自动调节，在不同色温光源下，拍出的照片中白色会出现偏色的情况。自动白平衡就是用来模拟人类的色彩恒常能力，在图像中去除光源引起的偏色，从而还原自然的色彩。
+
+自动白平衡算法根据技术路线可以归结为几大类，分别是：  
+- 场景假设模型：灰度世界、完美反射
+- 点统计模型：白色点估计、分块权重
+
+1. 灰度世界算法  
+该算法假设：对于一副有着丰富色彩的图片，图像上R、G、B三个通道的平均值应该等于一个被称为“灰色”的值$K$。至于“灰色”值K的选择，一种方法是将待处理图片三个通道均值的均值作为“灰色”值$K$。当确定了灰色值K之后，待处理图片各个通道的校正系数分别为：$k_r=K/R_{mean}，k_g=K/G_{mean}，k_b=K/B_{mean}$，其中$R_{mean}，G_{mean}和B_{mean}$分别为图像R、G、B通道的均值。
+
+{{< popup-details title="示例代码" >}}
+```cpp
+
+
+```
+{{< /popup-details >}}
 
 ### 去马赛克（Demosaicing）
 

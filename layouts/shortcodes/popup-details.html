@@ -1,0 +1,8 @@
+<details class="popup-details">
+    <summary>{{ .Get "title" }}</summary>
+    <div class="popup-content">
+      <button class="close-btn">✖</button>
+      {{ .Inner | markdownify}}
+    </div>
+  </details>
+  
