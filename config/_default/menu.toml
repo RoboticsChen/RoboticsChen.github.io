@@ -34,3 +34,13 @@ url = "https://www.emojisearch.app/"
 [social.params]
 icon = "search"
 newtab = true
+
+[[social]]
+weight = 4
+identifier = "symbals"
+name = "serach-symbals"
+url = "https://cn.piliapp.com/symbol/"
+
+[social.params]
+icon = "hash"
+newtab = true
