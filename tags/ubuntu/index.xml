@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Ubuntu on RoboticsChen's Blog</title><link>https://RoboticsChen.github.io/tags/ubuntu/</link><description>Recent content in Ubuntu on RoboticsChen's Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><lastBuildDate>Sun, 01 Dec 2024 05:17:56 +0000</lastBuildDate><atom:link href="https://RoboticsChen.github.io/tags/ubuntu/index.xml" rel="self" type="application/rss+xml"/><item><title>Linux 划词谷歌翻译解决方案</title><link>https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/</link><pubDate>Sun, 01 Dec 2024 05:17:56 +0000</pubDate><guid>https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/</guid><description>&lt;img src="https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/translate.png" alt="Featured image of post Linux 划词谷歌翻译解决方案" />&lt;h2 id="0-原理介绍">0. 原理介绍
+&lt;/h2>&lt;p>该方案先通过xclip获取用户选中的文本内容，对文本进行清理（移除隐藏字符,html标签,换行符），然后通过调用翻译 API（如谷歌翻译或其他服务）将文本翻译为目标语言，最后使用系统通知工具（notify-send）将翻译结果以通知的形式显示给用户。&lt;/p>
+&lt;h2 id="1-安装依赖">1. 安装依赖
+&lt;/h2>&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-shell" data-lang="shell">&lt;span class="line">&lt;span class="cl">sudo apt install xcilp jq
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>xcilp 用于获取剪贴板内容
+jq 用于对字符串进行 URL 编码（百分号编码）&lt;/p>
+&lt;h2 id="2-编写脚本">2. 编写脚本
+&lt;/h2>&lt;p>在/opt目录下新建一个名为my_translate.sh的脚本文件&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">sudo nano /opt/my_translate.sh
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>添加以下内容并保存退出：&lt;/p>
+&lt;details class="popup-details">
+&lt;summary>点击展开&lt;/summary>
+&lt;div class="popup-content">
+&lt;button class="close-btn">✖&lt;/button>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;span class="lnt">24
+&lt;/span>&lt;span class="lnt">25
+&lt;/span>&lt;span class="lnt">26
+&lt;/span>&lt;span class="lnt">27
+&lt;/span>&lt;span class="lnt">28
+&lt;/span>&lt;span class="lnt">29
+&lt;/span>&lt;span class="lnt">30
+&lt;/span>&lt;span class="lnt">31
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-bash" data-lang="bash">&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">#!/bin/bash&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># 从剪贴板获取选中的文字&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">selected_text&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="k">$(&lt;/span>xclip -o&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">clean_text&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="k">$(&lt;/span>&lt;span class="nb">echo&lt;/span> &lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="nv">$selected_text&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span> &lt;span class="p">|&lt;/span> sed &lt;span class="s1">&amp;#39;s/&amp;lt;[^&amp;gt;]*&amp;gt;//g&amp;#39;&lt;/span> &lt;span class="p">|&lt;/span> tr -d &lt;span class="s1">&amp;#39;\n\r&amp;#39;&lt;/span> &lt;span class="p">|&lt;/span> tr -d &lt;span class="s1">&amp;#39;\t&amp;#39;&lt;/span> &lt;span class="p">|&lt;/span> tr -s &lt;span class="s1">&amp;#39; &amp;#39;&lt;/span>&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">echo&lt;/span> &lt;span class="nv">$clean_text&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># 检查目标语言参数&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">target_language&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="nv">$1&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># 谷歌翻译API的URL&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">API_URL&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s2">&amp;#34;https://translate.googleapis.com/translate_a/single?client=gtx&amp;amp;sl=auto&amp;amp;tl=&lt;/span>&lt;span class="nv">$target_language&lt;/span>&lt;span class="s2">&amp;amp;dt=t&amp;amp;q=&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">query&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="k">$(&lt;/span>&lt;span class="nb">echo&lt;/span> -n &lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="nv">$clean_text&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span> &lt;span class="p">|&lt;/span> jq -sRr @uri&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># 调用Google Translate API&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">response&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="k">$(&lt;/span>curl -sL &lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="si">${&lt;/span>&lt;span class="nv">API_URL&lt;/span>&lt;span class="si">}${&lt;/span>&lt;span class="nv">query&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">## just for debug&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">#echo &amp;#34;完整请求 URL: ${API_URL}${query}&amp;#34; &amp;gt;&amp;gt; debug_log.txt&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1">#echo &amp;#34;API 响应: $response&amp;#34; &amp;gt;&amp;gt; debug_log.txt&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># 提取翻译结果&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nv">translation&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="k">$(&lt;/span>&lt;span class="nb">echo&lt;/span> &lt;span class="nv">$response&lt;/span> &lt;span class="p">|&lt;/span> awk -F&lt;span class="s1">&amp;#39;&amp;#34;&amp;#39;&lt;/span> &lt;span class="s1">&amp;#39;{print $2}&amp;#39;&lt;/span>&lt;span class="k">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nb">echo&lt;/span> &lt;span class="nv">$translation&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># 发送通知&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">notify-send &lt;span class="s2">&amp;#34;Translate Rerult (&lt;/span>&lt;span class="nv">$target_language&lt;/span>&lt;span class="s2">): &amp;#34;&lt;/span> &lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="nv">$translation&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>
+&lt;/div>
+&lt;/details>
+&lt;p>添加运行权限&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-shell" data-lang="shell">&lt;span class="line">&lt;span class="cl">sudo chmod +x /opt/my_translate.sh
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;h2 id="3快捷键设置">3.快捷键设置
+&lt;/h2>&lt;p>在&lt;code>设置/键盘/键盘快捷键&lt;/code>中添加两个自定义快捷键(en-&amp;gt;zh, zh-&amp;gt;en)：&lt;/p>
+&lt;p>&lt;img src="https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/image.png"
+width="522"
+height="422"
+srcset="https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/image_hu12386756057666352637.png 480w, https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/image_hu16788155634813566603.png 1024w"
+loading="lazy"
+alt="图1 英译中"
+class="gallery-image"
+data-flex-grow="123"
+data-flex-basis="296px"
+> &lt;img src="https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/image-1.png"
+width="522"
+height="422"
+srcset="https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/image-1_hu1307491186001270335.png 480w, https://RoboticsChen.github.io/articles/linux-ubuntu-wayland-google-translate/image-1_hu12750357092442604994.png 1024w"
+loading="lazy"
+alt="图2 中译英"
+class="gallery-image"
+data-flex-grow="123"
+data-flex-basis="296px"
+>&lt;/p>
+&lt;p>注意根据脚本名称对应修改命令&lt;/p></description></item></channel></rss>

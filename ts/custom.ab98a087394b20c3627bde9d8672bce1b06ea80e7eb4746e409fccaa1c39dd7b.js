@@ -1,0 +1,1 @@
+(()=>{document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll(".popup-details").forEach(e=>{let t=e.querySelector(".popup-content")?.querySelector(".close-btn");t&&t.addEventListener("click",()=>{e.removeAttribute("open")}),document.addEventListener("click",n=>{e.open&&!e.contains(n.target)&&e.removeAttribute("open")})})});})();
