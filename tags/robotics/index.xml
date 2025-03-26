@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Robotics on RoboticsChen's Blog</title><link>https://RoboticsChen.github.io/tags/robotics/</link><description>Recent content in Robotics on RoboticsChen's Blog</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><lastBuildDate>Tue, 25 Mar 2025 06:34:20 +0000</lastBuildDate><atom:link href="https://RoboticsChen.github.io/tags/robotics/index.xml" rel="self" type="application/rss+xml"/><item><title>Figure AI Helix System 论文总结</title><link>https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/</link><pubDate>Tue, 25 Mar 2025 06:34:20 +0000</pubDate><guid>https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/</guid><description>&lt;img src="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image.png" alt="Featured image of post Figure AI Helix System 论文总结" />&lt;h1 id="figure-ai-helix-系统总结">Figure AI Helix 系统总结
+&lt;/h1>&lt;h2 id="硬件组成">硬件组成
+&lt;/h2>&lt;p>&lt;img src="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-2.png"
+width="753"
+height="822"
+srcset="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-2_hu_a4795c140fc72dc6.png 480w, https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-2_hu_d64487326dfbd911.png 1024w"
+loading="lazy"
+alt="头部摄像头"
+class="gallery-image"
+data-flex-grow="91"
+data-flex-basis="219px"
+> &lt;img src="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-1.png"
+width="514"
+height="425"
+srcset="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-1_hu_4534d8beb6940b26.png 480w, https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-1_hu_ed1385affa40c429.png 1024w"
+loading="lazy"
+alt="机器人整体照片"
+class="gallery-image"
+data-flex-grow="120"
+data-flex-basis="290px"
+>&lt;/p>
+&lt;ol>
+&lt;li>感知系统：Figure 02的头部、前躯干和后躯干共配备6个RGB摄像头&lt;/li>
+&lt;li>决策系统：嵌入式控制板及2块板载低功耗GPUs（NVIDIA RTX GPU，具体型号暂不明确）&lt;a class="link" href="https://blogs.nvidia.com/blog/figure-humanoid-robot-autonomous/" target="_blank" rel="noopener"
+>参考来源&lt;/a>&lt;/li>
+&lt;li>执行系统：人形上身，腰部+头部+双臂共35个关节（从照片推测，头2 + 腰3 + 臂7x2 + 手16x2），部分手部自由度应该没有用到&lt;/li>
+&lt;/ol>
+&lt;h2 id="网络结构">网络结构
+&lt;/h2>&lt;p>&lt;img src="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image.png"
+width="1448"
+height="537"
+srcset="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image_hu_3114dd015cc042f.png 480w, https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image_hu_f773820ef4c3694b.png 1024w"
+loading="lazy"
+alt="Pipeline"
+class="gallery-image"
+data-flex-grow="269"
+data-flex-basis="647px"
+>&lt;/p>
+&lt;p>VLA网络由解耦的两个系统——预训练视觉语言模型（S2） + 控制小模型（S1）组成，两者在各自的时间尺度上运行，结合VLM模型广泛通用但不够快的特点和视觉运动策略快速而不广泛的特点，实现一个既广泛又快速的VLA控制模型。&lt;/p>
+&lt;h3 id="s2">S2
+&lt;/h3>&lt;p>参数量：7B&lt;br>
+类型：开源VLM&lt;br>
+输入：RGB图片、关节角信息&lt;br>
+输出：潜空间向量&lt;br>
+输出频率：7-9Hz&lt;br>
+作用：场景理解和语义理解，提供跨物体和场景的泛化能力，将所有与语义任务相关的信息提炼到一个单一的连续潜在向量中，并将其传递给S1&lt;/p>
+&lt;h3 id="s1">S1
+&lt;/h3>&lt;p>参数量：80M&lt;br>
+类型：交叉注意力的编解码Transformer网络，依赖一个多尺度的全卷积视觉骨干进行视觉处理（在仿真器中预训练初始化*）&lt;br>
+输入：潜空间向量、RGB图片、关节角&lt;br>
+输出：高频机器人动作（关节角）&lt;br>
+输出频率：200Hz&lt;br>
+作用：快速灵巧的控制策略，结合图像编码和当前关节角信息，将潜空间向量表示转化成连续的机器人动作（目标关节角）&lt;/p>
+&lt;h3 id="训练细节">训练细节：
+&lt;/h3>&lt;p>训练数据：约500h的高质量、多机器人、多操作员的多样化遥操作行为数据集&lt;br>
+训练方法：基于raw pixel和文本指令到连续动作的映射，做端到端的训练，采用标准的回归损失。梯度从S1通过潜表示向量传递到S2，实现两者的协同优化。&lt;/p>
+&lt;blockquote>
+&lt;p>注意：&lt;/p>
+&lt;ul>
+&lt;li>S1和S2在训练阶段是耦合的&lt;/li>
+&lt;li>为了模拟真实的推理延迟，在训练阶段认为引入了S1和S2输入量的时间偏移*&lt;/li>
+&lt;/ul>&lt;/blockquote>
+&lt;h3 id="调优的流式推理">调优的流式推理
+&lt;/h3>&lt;p>S1和S2分别运行在一块专门的GPU上，基于共享的内存形成一个生产者-消费者模型。&lt;br>
+S2异步地处理最新的观测信息和自然语言指令， 持续地生成编码了高维意图行为意图的潜向量，并更新到共享内存中。&lt;br>
+S1在独立线程中，结合最新观测和自然语言指令，消费共享内存中的潜向量生成连续的机器人动作。由于S1比S2有更高的推理速度，因此有更高的时间分辨率，从而可以实现更紧密的闭环实时控制。&lt;/p>
+&lt;h2 id="数据流与传输带宽">数据流与传输带宽
+&lt;/h2>&lt;h3 id="数据流">数据流
+&lt;/h3>&lt;p>&lt;img src="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-4.png"
+width="1080"
+height="315"
+srcset="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-4_hu_b4c9380bafbeb227.png 480w, https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-4_hu_3e4bb4a4fa05811.png 1024w"
+loading="lazy"
+alt="图像特征融合"
+class="gallery-image"
+data-flex-grow="342"
+data-flex-basis="822px"
+>&lt;br>
+Sensor以20Hz的频率采集图像和关节角。&lt;br>
+Observation（raw_img） ────传感器图像────&amp;gt;多尺度立体视觉网络 ────合并图像特征────&amp;gt; Observation（combind_img_token）&lt;br>
+Observation（command + state + combind_img_token）────7&lt;del>9Hz观测信息────&amp;gt; S2 ────7&lt;/del>9Hz潜向量────&amp;gt; S1 ────200Hz动作────&amp;gt;执行器&lt;br>
+Observation（command + state + combind_img_token）─────20Hz观测信息────&amp;gt; S1&lt;/p>
+&lt;h3 id="传输带宽">传输带宽
+&lt;/h3>&lt;p>未提及&lt;/p>
+&lt;h2 id="特色">特色
+&lt;/h2>&lt;p>&lt;a class="link" href="https://www.figure.ai/news/helix" target="_blank" rel="noopener"
+>官方观点&lt;/a>：&lt;/p>
+&lt;ol>
+&lt;li>全身控制：它是历史上第一个类人机器人上半身的高速连续控制 VLA 模型，覆盖手腕、躯干、头部和单个手指；&lt;/li>
+&lt;li>多机器人协作：可以两台机器人用同样的模型控制协作，完成前所未见的任务；&lt;/li>
+&lt;li>抓取任何物品：可以捡起任何小型物体，包括数千种它们从未遇到过的物品，只需遵循自然语言指令即可；&lt;/li>
+&lt;li>单一神经网络：Helix 使用一组神经网络权重来学习所有行为，如抓取和放置物品、使用抽屉和冰箱、以及跨机器人交互，而无需任何任务特定的微调；&lt;/li>
+&lt;li>本地化：Helix 是史上第一个在板端 GPU 运行的机器人 VLA 模型，已经具备了商业化落地能力。&lt;/li>
+&lt;li>扩展到家用场景成本低：相比于传统的依据单个任务由机器人专家定制化的控制和需要采集大量数据的模仿学习控制，借助VLM模型实现强大泛化能力的端到端模型更有优势
+&lt;img src="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-3.png"
+width="1920"
+height="1081"
+srcset="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-3_hu_67e434179e12c82a.png 480w, https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-3_hu_51eb2eb58bdefd4f.png 1024w"
+loading="lazy"
+alt="机器人Scaling Law"
+class="gallery-image"
+data-flex-grow="177"
+data-flex-basis="426px"
+>&lt;/li>
+&lt;/ol>
+&lt;p>&lt;a class="link" href="https://mp.weixin.qq.com/s/ZkY0IYETGXXDixuo-wKekA" target="_blank" rel="noopener"
+>量子位观点&lt;/a>&lt;/p>
+&lt;ol>
+&lt;li>空间感知：多相机实现隐式立体视觉与多尺度视觉表示，增强了3D空间感知和场景理解精度&lt;/li>
+&lt;li>执行速度上限高：在物流场景的微调应用中使用简单的test-time加速技术（同样的waypoint以更短的时间间隔执行），保持高成功率的同时实现了更快的执行速度。&lt;/li>
+&lt;li>微调成本低：仅用8小时精心挑选的数据就能训练出一个灵活且适应性强的策略。&lt;/li>
+&lt;li>引入视觉自校准模型：该模型可以让每个机器人通过自身的视觉输入来自我校准，估算出机械臂末端的精确位置和姿态，提高跨机器人实例的泛化能力。&lt;/li>
+&lt;li>存在自纠正能力：训练过程中，Figure排除了那些较慢的、遗漏的或失败的案例，不过特意保留了包含纠正行为的案例。&lt;/li>
+&lt;li>默认交互方式为语音交互
+&lt;img src="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-5.gif"
+width="640"
+height="328"
+srcset="https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-5_hu_9100231fc2360407.gif 480w, https://RoboticsChen.github.io/articles/figure-ai-helix-system-paper-reading/assets/image-5_hu_ec57953f01cb7d02.gif 1024w"
+loading="lazy"
+alt="自纠正"
+class="gallery-image"
+data-flex-grow="195"
+data-flex-basis="468px"
+>&lt;/li>
+&lt;/ol>
+&lt;p>个人判断：&lt;/p>
+&lt;ol>
+&lt;li>采用七自由度冗余机械臂，工作空间更大，由于是端到端的模型，不存在FK/IK，多一个自由度对模型来说区别不大，但效果会好很多&lt;/li>
+&lt;li>暂不能实现跨构型的泛化能力，但是针对不同的执行器和机器人构型，不需要改变模型架构，只需要改变输出参数的数量重新采集数据训练模型&lt;/li>
+&lt;/ol></description></item></channel></rss>
